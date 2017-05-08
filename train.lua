@@ -1,19 +1,19 @@
 require 'torch'
 require 'nn'
-require 'optim'
-require 'LSTM'
 require 'cunn'
+require 'optim'
+require 'rnn'
 require 'hdf5'
 
 local utils = require 'utils'
 --和输入数据格式务必保持一致
-seqLength=30
+seqLength=60
 
-numClass=18
+numClass=17
 slidingWindowLength=24
 sensorChannel=113
 
-batchSize=100
+batchSize=128
 
 local cnn = {}
 cnn.inputChannel=1
@@ -22,29 +22,31 @@ cnn.kernel1=1
 cnn.kernel2=5
 cnn.outputs=1024
 
-lstmHiddenUnits1=128
+lstmHiddenUnits1=64
 lstmHiddenUnits2=256
+lstmHiddenUnits3=128
+
+-- input(60,1,24,113),output(60,)
 
 local model=nn.Sequential()
-model:add(nn.SpatialConvolution(cnn.inputChannel,cnn.numHiddenUnits,cnn.kernel1,cnn.kernel2))
-model:add(nn.SpatialConvolution(cnn.numHiddenUnits,cnn.numHiddenUnits,cnn.kernel1,cnn.kernel2))
-model:add(nn.SpatialConvolution(cnn.numHiddenUnits,cnn.numHiddenUnits,cnn.kernel1,cnn.kernel2))
-model:add(nn.SpatialConvolution(cnn.numHiddenUnits,cnn.numHiddenUnits,cnn.kernel1,cnn.kernel2))
-model:add(nn.View(cnn.numHiddenUnits*(slidingWindowLength-16)*sensorChannel))
-model:add(nn.Linear(cnn.numHiddenUnits*(slidingWindowLength-16)*sensorChannel,cnn.outputs))
 
---reshape for inner LSTM,make the seqLength(32)*hiddenUnits(32)=cnn.outputs(1024)
-model:add(nn.View(-1,32,32))
-model:add(nn.LSTM(32,lstmHiddenUnits1))
-model:add(nn.LSTM(lstmHiddenUnits1,32))
+model:add(nn.SpatialConvolution(1,8,1,5))--(60,8,20,113)
+model:add(nn.ReLU())
+model:add(nn.SpatialConvolution(8,8,1,5))--(60,8,16,113)
+model:add(nn.ReLU())
+model:add(nn.Transpose({2,3}))--(60,16,8,113)
+model:add(nn.View(seqLength,16,-1))--(60,16,904)
+model:add(nn.Sequencer(nn.LSTM(904,128)))
+model:add(nn.Sequencer(nn.LSTM(128,64)))--60,16,64
 
-model:add(nn.View(1,seqLength,1024))
-model:add(nn.LSTM(1024,lstmHiddenUnits2))
-model:add(nn.LSTM(lstmHiddenUnits2,lstmHiddenUnits2))
+model:add(nn.View(60,-1))--60*1024
+model:add(nn.Sequencer(nn.LSTM(1024,512)))--60*512
+model:add(nn.Sequencer(nn.LSTM(512,128)))--60*128
 
-model:add(nn.View(seqLength*lstmHiddenUnits2))
-model:add(nn.Linear(seqLength*lstmHiddenUnits2,numClass))
+model:add(nn.Linear(128,numClass))
 model:add(nn.LogSoftMax())
+
+model=model:cuda()
 
 criterion=nn.ClassNLLCriterion()
 
@@ -52,16 +54,19 @@ batchLoader=require 'DataLoader'
 
 local loader = batchLoader.create(batchSize)
 
-local numEpochs=500
+local numEpochs=200
+
+-- local checkpoint = torch.load('retrainModel_60_35.t7')
+-- local model = checkpoint.model
+-- model=model:cuda()
 
 function train(model)
   utils.printTime("Starting training for %d epochs" % {numEpochs})
 
   local trainLossHistory = {}
   local valLossHistory = {}
-  local valLossHistoryEpochs = {}
-  local checkpointEvery = 50
-  local lrDecayEvery = 10
+  local checkpointEvery = 3
+  local lrDecayEvery = 5
   local lrDecayFactor = 0.5
   local printEvery = 1
 
@@ -73,18 +78,19 @@ function train(model)
     utils.printTime("Starting training for the %d th epoch" % {i})
     local epochLoss = {}
 
-    if i % lrDecayEvery == 0 then
-      local oldLearningRate = config.learningRate
-      config = {learningRate = oldLearningRate * lrDecayFactor}
-    end
+    -- if i % lrDecayEvery == 0 then
+    --   local oldLearningRate = config.learningRate
+    --   config = {learningRate = oldLearningRate * lrDecayFactor}
+    -- end
 
     local batch = loader:nextBatch('train')
-
+    batch_poch=0
     while batch ~= nil do
-
+      print('get batch data...')
+      print(batch_poch)
+      batch_poch=batch_poch+1
       batch.data = batch.data:cuda()
       batch.label = batch.label:cuda()
-      model=model:cuda()
       criterion=criterion:cuda()
 
       local function feval(x)
@@ -97,10 +103,12 @@ function train(model)
         gradParams:zero()
 
         local loss = 0
-        --maybe there is a bug
+
         for j=1,batchSize do
-          local trueLabel = batch.label[j]+1
+
+          local trueLabel = batch.label[j]
           local modelOut = model:forward(batch.data[j])
+
           local modelLoss = criterion:forward(modelOut, trueLabel)
           loss=loss+modelLoss
           local gradOutput = criterion:backward(modelOut, trueLabel)
@@ -115,9 +123,11 @@ function train(model)
 
       local _, loss = optim.adam(feval, params, config)
       table.insert(epochLoss, loss[1])
+      print("batch_loss is :")
+      print(loss)
 
       batch = loader:nextBatch('train')
-      -- batch=nil
+      --batch=nil
     end
     --when batch is nil,the above loop end,so cal the epochloss
     local epochLoss = torch.mean(torch.Tensor(epochLoss))
@@ -132,25 +142,29 @@ function train(model)
     if (checkpointEvery > 0 and i % checkpointEvery == 0) or i == numEpochs then
       -- to know the validation loss,so we can know the train if have completed
       --and after we can need to earlyStop depends on the valLoss not increasing any more
-      local valLoss = validate()
-      utils.printTime("Epoch %d validation loss: %f" % {i, valLoss})
-      table.insert(valLossHistory, valLoss)
-      table.insert(valLossHistoryEpochs, i)
-
-      local checkpoint = {
-        trainLossHistory = trainLossHistory,
-        valLossHistory = valLossHistory
-      }
-
+        
       local filename
       if i == numEpochs then
-        filename = '%s_%s.t7' % {'trainModel', 'final'}
+        filename = '%s_60_%s.t7' % {'LRCL','final'}
       else
-        filename = '%s_%d.t7' % {'trainModel', i}
+        filename = '%s_60_%d.t7' % {'LRCL', i}
       end
 
       -- Make sure the output directory exists before we try to write it
-      paths.mkdir(paths.dirname(filename))
+      paths.mkdir(paths.dirname(filename))  
+
+      -- local valLoss = validate()
+      -- utils.printTime("Epoch %d validation loss: %f" % {i, valLoss})
+      -- table.insert(valLossHistory, valLoss)    
+
+      -- local checkpoint = {
+      --   trainLossHistory = trainLossHistory,
+      --   valLossHistory = valLossHistory
+      -- }
+
+      local checkpoint = {
+        trainLossHistory=trainLossHistory
+      }
 
       -- Cast model to float so it can be used on CPU
       model:float()
@@ -192,9 +206,8 @@ function validate()
       local loss = 0
 
       for k=1,batchSize do
-        local _,modelOut = model:forward(valbatch.data[k])
-        local confidence,indice = torch.sort(modelOut,true)
-        local modelLoss = criterion:forward(indice[1], valbatch.label[k])
+        local modelOut = model:forward(valbatch.data[k])
+        local modelLoss = criterion:forward(modelOut, valbatch.label[k])
         loss=loss+modelLoss
       end
       
@@ -211,23 +224,24 @@ function validate()
   return evalData.loss / (evalData.numBatches*batchSize)
 end
 -- can be a single file
-function test()
 
-  local testData=loader:getTestSet()
-  prelist={}
-  for i=1,testData.data:size(1) do
-    local prediction = model:forward(testData.data[i])
-    table.insert(prelist,prediction)
+-- function test()
 
-  end
+--   local testData=loader:getTestSet()
+--   prelist={}
+--   for i=1,testData.data:size(1) do
+--     local prediction = model:forward(testData.data[i])
+--     table.insert(prelist,prediction)
+
+--   end
   
-  -- just save the predicitons to file,and the use python to cal the scores
-  local myFile = hdf5.open('torchResult.h5', 'w')
-  myFile:write('predictions', prelist)
-  myFile:write('labels', testData.label)
-  myFile:close()
+--   -- just save the predicitons to file,and the use python to cal the scores
+--   local myFile = hdf5.open('torchResult.h5', 'w')
+--   myFile:write('predictions', prelist)
+--   myFile:write('labels', testData.label)
+--   myFile:close()
 
-end
+-- end
 
 train(model)
 print("\n-----train have done----\n")
