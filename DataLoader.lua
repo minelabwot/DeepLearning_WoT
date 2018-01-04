@@ -42,9 +42,6 @@ function DataLoader:nextBatch(split)
     local start=dataset.batch_idx
     local start_end=start+self.batch_size-1
     
-    if(start%10==0)
-        print("batch_index is ",start)
-    end
     -- set the deadline
     if(start_end>=dataset.sample_size) then
         self.splits[split].batch_idx=1
@@ -52,28 +49,13 @@ function DataLoader:nextBatch(split)
     else
 
         local myFile=hdf5.open(split..'.h5','r')
-        local myFileData={data=myFile:read('data'):partial({start,start_end},{1,30},{1,1},{1,24},{1,113}),label=myFile:read('label'):partial({start,start_end})}
+        local myFileData={data=myFile:read('data'):partial({start,start_end},{1,20},{1,1},{1,24},{1,113}),label=myFile:read('label'):partial({start,start_end})}
         myFile:close()
 
         self.splits[split].batch_idx=start_end+1
 
         activityData={}
         activityLabel={}
-
-        -- for i=1,self.batch_size do
-        --     local mydata=myFileData.data[i]
-        --     -- local mylabel=myFileData.label[i]
-        --     table.insert(activityData,mydata)
-        --     -- table.insert(activityLabel,mylabel)
-        -- end
-        -- table can't call method 'size()'
-        -- print('activityData shape is ',#activityData)
-        --activityData[i] is torch.FloatTensor of size 30x1x24x113
-        -- but cat() method expected DoubleTensor in tensor array
-        --local aaa = torch.cat(activityData,1):type('torch.DoubleTensor')
-        ---print("aaa is ",aaa),torch.DoubleTensor of size 3840x1x24x113
-        -- local bbb = torch.cat(myFileData.data,1):type('torch.DoubleTensor')
-        -- print(bbb)
 
         local batch={
             data=myFileData.data,
@@ -95,14 +77,6 @@ function DataLoader:nextBatch(split)
     end
 end
 
-function DataLoader:getTestSet()
-    local myTestFile=hdf5.open('test.h5','r')
-    local testSet = {data=myTestFile:read('data'):all(),label=myTestFile:read('label'):all()}
-    myTestFile:close()
-    print("data size is ",testSet.data:size())
-    print("label size is ",testSet.label:size())
-    return testSet
-end
 
 return DataLoader
 

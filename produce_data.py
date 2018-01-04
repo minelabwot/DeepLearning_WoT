@@ -1,8 +1,7 @@
-
 import time
-
 import numpy as np
 import cPickle as cp
+import h5py,os
 from sliding_window import sliding_window
 
 # Hardcoded number of sensor channels employed in the OPPORTUNITY challenge
@@ -15,7 +14,7 @@ NUM_CLASSES = 18
 SLIDING_WINDOW_LENGTH = 24
 
 # activity length
-ACTIVITY_LENGTH=30
+ACTIVITY_LENGTH=20
 
 # Length of the input sequence after convolutional operations
 FINAL_SEQUENCE_LENGTH = 8
@@ -25,9 +24,6 @@ SLIDING_WINDOW_STEP = 12
 
 # Batch Size
 #BATCH_SIZE = 100
-
-# Number filters convolutional layers
-NUM_FILTERS = ACTIVITY_LENGTH
 
 # Size filters convolutional layers
 FILTER_SIZE = 5
@@ -92,36 +88,29 @@ def third_sliding_window(data_x, data_y, ws, ss):
     return data_x.astype(np.float32), data_y.reshape(len(data_y)).astype(np.float32)
 
 
-X_train,y_train=third_sliding_window(X_train,y_train,30,1)
+X_train,y_train=third_sliding_window(X_train,y_train,ACTIVITY_LENGTH,1)
 X_train=X_train.reshape(-1,X_train.shape[1],1,X_train.shape[2],X_train.shape[3])
 print(" ..after.. after sliding window (train): inputs {0}, targets {1}".format(X_train.shape, y_train.shape))
-#inputs (46466, 30, 1, 24, 113), targets (46466,)
+#inputs (46466, 20, 1, 24, 113), targets (46466,)
 X_test, y_test = opp_sliding_window(X_test, y_test, SLIDING_WINDOW_LENGTH, SLIDING_WINDOW_STEP)
 print(" ..after sliding window (testing): X_test {0}, y_test {1}".format(X_test.shape, y_test.shape))
 
-X_test,y_test=third_sliding_window(X_test,y_test,30,1)
+X_test,y_test=third_sliding_window(X_test,y_test,ACTIVITY_LENGTH,1)
 X_test=X_test.reshape(-1,X_test.shape[1],1,X_test.shape[2],X_test.shape[3])
 print(" ..after.. after sliding window (train): inputs {0}, targets {1}".format(X_test.shape, y_test.shape))
-#inputs (9865, 30,1, 24, 113), targets (9865,)
+#inputs (9865, 20 ,1, 24, 113), targets (9865,)
 X_val=X_train[30000:36000]
 y_val=y_train[30000:36000]
 
-# X_val=X_val.reshape(-1,3000,1,24,113)
-# y_val=y_val.reshape(-1,100)
 
 X_train=X_train[0:30000]
 y_train=y_train[0:30000]
 
-# X_train=X_train.reshape(-1,3000,1,24,113)
-# y_train=y_train.reshape(-1,100)
 
 X_test=X_test[0:8000]
 y_test=y_test[0:8000]
 
-# X_test=X_test.reshape(-1,3000,1,24,113)
-# y_test=y_test.reshape(-1,100)
-
-import h5py,os
+# save data
 
 file_train=h5py.File('train.h5','w')
 file_train.create_dataset('data',data=X_train,compression="gzip",compression_opts=9)
@@ -138,6 +127,8 @@ file_test=h5py.File('test.h5','w')
 file_test.create_dataset('data',data=X_test,compression="gzip",compression_opts=9)
 file_test.create_dataset('label',data=y_test,compression="gzip",compression_opts=9)
 file_test.close()
+
+# read data to check 
 
 myTrainFile=h5py.File('train.h5','r')
 trainData=myTrainFile['data']
