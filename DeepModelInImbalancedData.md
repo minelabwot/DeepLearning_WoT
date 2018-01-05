@@ -47,4 +47,4 @@ Considering that the over-sample method is relatively easier to form overfitting
 
 [a simple process for using the depth model in imbalanced data](normalDetect.png)
 
-* ❤️ Hopefully, those ideas can help serve as a guide to all of you as you continue along this process. ❤️*
+*❤️ Hopefully, those ideas can help serve as a guide to all of you as you continue along this process.❤️*
