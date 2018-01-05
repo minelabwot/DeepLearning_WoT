@@ -28,7 +28,7 @@ we compared the performance of this model with DeepConvLSTM in recognition tasks
 *DeepConvLSTM* : This model is designed for the wearable human activity recognition task. This architecture combines convolutional and recurrent layers. The convolutional layers act as feature extractors and provide abstract representations of the input sensor data in feature maps. The recurrent layers model the temporal dynamics from these feature maps, namely there are no outer LSTMs.
 *LRCN* : This architecture is expertly designed for visual recognition and description, and is suitable for time-varying inputs and outputs. LRCN processes every input frame with a CNN, and then the outputs are fed into a stack of LSTMs, which finally produce a variable-length prediction. So there are no inner LSTMs in this model. As the input of video stream is similar to the sequence of time windows, this model can be used for time series classification and recognition. And here we use the same layers of CNNs and LSTMs as our model for a fair comparison.
 
-when `sliding_window_length=24` the results of the models in classification and prediction tasks are shown as follows:
+when `sliding_window_length=24`,the results of the models in classification and prediction tasks are shown as follows 
 
 |Model|Classification|Prediction|
 |---|---|---|
@@ -36,13 +36,13 @@ when `sliding_window_length=24` the results of the models in classification and 
 |LRCN|86.54%|74.25%|
 |DeepConvLSTM|84.34%|null|
 
-[ *visit this paper for further knowledge* ](http://ieeexplore.ieee.org/document/8113070/)
+[ *visit this paper for more detailed info* ](http://ieeexplore.ieee.org/document/8113070/)
 
 ****
 
 ### Program execution steps：
 
-#### 1、only when using OPPORTUNITY dataset
+#### 1、if you are using OPPORTUNITY dataset
 [you can refer to the process written in DeepConvLSTM model](https://github.com/sussexwearlab/DeepConvLSTM/blob/master/DeepConvLSTM.ipynb)
 
 Fetch the origin data first.
@@ -101,12 +101,15 @@ model:add(nn.LogSoftMax())
 --output(20,)
 ```
 
-execute the `preprocess_data.py` and `produce_data.py`
+execute the `produce_data.py`
 
 ```
-python preprocess_data.py
 python produce_data.py
 ```
+
+Here, we use the sliding time window method to acquire the data shape that we wanted.
+
+![diagrammatic sketch of the sliding time window method](slidingWindow.png)
 
 #### begin training
 
@@ -118,5 +121,12 @@ Recommended as a background process：
 ```
 nohup th train.lua > train_record.txt &
 ```
+
+
+#### Further knowledge (apply this model to imbalanced data)
+
+[Here are some of my experiences in using the depth model to do classification tasks in imbalanced data](https://github.com/minelabwot/DeepLearning_WoT/DeepModelInImbalancedData.md)
+
+
 
 
