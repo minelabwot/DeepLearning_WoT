@@ -45,6 +45,8 @@ However, we found that the practice is not always according to it. Only adding a
 
 Considering that the over-sample method is relatively easier to form overfitting, we use under-sample method in most cases.
 
-[a simple process for using the depth model in imbalanced data](normalDetect.png)
+a simple process for using the depth model in imbalanced data:
 
-* ❤️ Hopefully, those ideas can help serve as a guide to all of you as you continue along this process. ❤️*
+![](normalDetect.png)
+
+*❤️ Hopefully, those ideas can help serve as a guide to all of you as you continue along this process.❤️*
