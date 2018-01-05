@@ -109,7 +109,9 @@ python produce_data.py
 
 Here, we use the sliding time window method to acquire the data shape that we wanted.
 
-![diagrammatic sketch of the sliding time window method](slidingWindow.png)
+diagrammatic sketch of the sliding time window method:
+
+![](slidingWindow.png)
 
 #### begin training
 
@@ -125,7 +127,7 @@ nohup th train.lua > train_record.txt &
 
 #### Further knowledge (apply this model to imbalanced data)
 
-[Here are some of my experiences in using the depth model to do classification tasks in imbalanced data](https://github.com/minelabwot/DeepLearning_WoT/DeepModelInImbalancedData.md)
+[Here are some of my experiences in using the depth model to do classification tasks in imbalanced data](https://github.com/minelabwot/DeepLearning_WoT/blob/master/DeepModelInImbalancedData.md)
 
 
 
