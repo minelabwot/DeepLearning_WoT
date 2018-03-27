@@ -50,3 +50,31 @@ a simple process for using the depth model in imbalanced data:
 ![](normalDetect.png)
 
 *❤️ Hopefully, those ideas can help serve as a guide to all of you as you continue along this process.❤️*
+
+#### tech details
+
+##### execution step
+
+data preprocessing
+
+```
+python process_data.py && python merge_files.py && python normalize.py
+```
+
+produce train/validate/test set.
+
+```
+python produce_LRCL_classifier.py
+```
+
+split the training set into multiple subsets
+
+```
+python splite_train_LRCL.py
+```
+
+start training
+
+```
+th train_LRCL_classifier24.lua
+```
