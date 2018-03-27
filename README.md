@@ -127,7 +127,7 @@ nohup th train.lua > train_record.txt &
 
 #### Further knowledge (apply this model to imbalanced data)
 
-[Here are some of my experiences in using the depth model to do classification tasks in imbalanced data](https://github.com/minelabwot/DeepLearning_WoT/blob/master/DeepModelInImbalancedData.md)
+Here are some of my experiences in using the depth model to do classification tasks in imbalanced data. [They are saved in the Deeplearning_imbalance folder in this repo](https://github.com/minelabwot/DeepLearning_WoT/tree/master/DeepLearning_imbalance)
 
 
 
